@@ -5,6 +5,7 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
+    pull_policy: build
     ports:
       - "8080:8080" # Server exposed port
     volumes:
@@ -16,6 +17,7 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
+    pull_policy: build
     ports:
       - "3005:80" # React client exposed port
     volumes:
