@@ -19,9 +19,8 @@ io.on("connection", (socket) => {
   socket.on("join_room", (data) => {
     users.set(socket.id, { username: data.username, typing: false });
     socket.join(data.room);
-    console.log({ users: getUsersInRoom(data.room) });
+
     io.to(data.room).emit("onlineUsers", getUsersInRoom(data.room));
-    console.log(`User with ID: ${socket.id} joined room: ${data}`);
   });
 
   socket.on("send_message", (data) => {
@@ -40,6 +39,18 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("User Disconnected", socket.id);
+  });
+
+  socket.on("callUser", (data) => {
+    io.to(data.userToCall).emit("callUser", {
+      signal: data.signalData,
+      from: data.from,
+      name: data.name,
+    });
+  });
+
+  socket.on("answerCall", (data) => {
+    io.to(data.to).emit("callAccepted", data.signal);
   });
 });
 
