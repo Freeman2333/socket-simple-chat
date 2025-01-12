@@ -3,7 +3,9 @@ import io from "socket.io-client";
 import "./App.css";
 import Chat from "./Chat";
 
-const socket = io.connect(process.env.REACT_APP_SOCKET_SERVER_URL);
+const socket = io.connect(
+  process.env.REACT_APP_SOCKET_SERVER_URL || "http://portainer.codeit.ai:8082/"
+);
 
 function App() {
   const [username, setUsername] = useState("");
