@@ -1,8 +1,12 @@
+require("dotenv").config();
 const express = require("express");
 const app = express();
 const http = require("http");
 const cors = require("cors");
 const { Server } = require("socket.io");
+
+const PORT = process.env.SERVER_PORT || 8080;
+
 app.use(cors());
 
 const server = http.createServer(app);
@@ -54,8 +58,8 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(8082, () => {
-  console.log("SERVER RUNNING");
+server.listen(PORT, () => {
+  console.log(`SERVER RUNNING on port ${PORT}`);
 });
 
 function getUsersInRoom(room) {
