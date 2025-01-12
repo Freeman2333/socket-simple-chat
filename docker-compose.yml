@@ -22,7 +22,7 @@ services:
       dockerfile: Dockerfile
     pull_policy: build
     environment:
-      - SOCKET_SERVER_URL=${SOCKET_SERVER_URL}
+      - REACT_APP_SOCKET_SERVER_URL=${REACT_APP_SOCKET_SERVER_URL}
       - CLIENT_PORT=${CLIENT_PORT:-3005}
     ports:
       - "${CLIENT_PORT}:80"
