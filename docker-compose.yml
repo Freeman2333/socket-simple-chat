@@ -23,9 +23,9 @@ services:
     pull_policy: build
     environment:
       - REACT_APP_SOCKET_SERVER_URL=${REACT_APP_SOCKET_SERVER_URL}
-      - CLIENT_PORT=${CLIENT_PORT:-3005}
+      - REACT_APP_CLIENT_PORT=${REACT_APP_CLIENT_PORT:-3005}
     ports:
-      - "${CLIENT_PORT}:80"
+      - "${REACT_APP_CLIENT_PORT}:80"
     volumes:
       - ./client:/app
       - /app/node_modules
