@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     pull_policy: build
     ports:
-      - "8080:8080" # Server exposed port
+      - "8082:8082" # Server exposed port
     volumes:
       - ./server:/app
       - /app/node_modules
