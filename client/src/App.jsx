@@ -11,7 +11,6 @@ function App() {
   const [username, setUsername] = useState("");
   const [room, setRoom] = useState("");
   const [showChat, setShowChat] = useState(false);
-  console.log({ ss: process.env.REACT_APP_SOCKET_SERVER_URL });
 
   const joinRoom = () => {
     if (username !== "" && room !== "") {

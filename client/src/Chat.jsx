@@ -179,11 +179,11 @@ function Chat({ socket, username, room }) {
           </>
         )}
       </div>
-      {(userToCallId || callAnswered) && (
+      {/* {(userToCallId || callAnswered) && (
         <button className="button" onClick={() => leaveCall()}>
           Leave Call
         </button>
-      )}
+      )} */}
       {(userToCallId || callAnswered) && (
         <video
           playsInline
