@@ -1,18 +1,19 @@
 import React, { useEffect, useRef, useState } from "react";
 import ScrollToBottom from "react-scroll-to-bottom";
-import Peer from "simple-peer";
+import Peer from "simple-peer/simplepeer.min.js";
 
 function Chat({ socket, username, room }) {
   const [currentMessage, setCurrentMessage] = useState("");
   const [messageList, setMessageList] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
-  const [userToCallId, setUserToCallId] = useState(null);
+  const [showMyVideo, setShowMyVideo] = useState(false);
+  const [myCurrentStream, setMyCurrentStream] = useState(null);
+  const [userCurrentStream, setUserCurrentStream] = useState(null);
   const [receivingCall, setReceivingCall] = useState(false);
   const [callerId, setCallerId] = useState("");
   const [callerName, setcallerName] = useState("");
   const [callerSignal, setCallerSignal] = useState();
   const [callAccepted, setCallAccepted] = useState(false);
-  const [callAnswered, setCallAnswered] = useState(false);
 
   const myVideo = useRef(null);
   const userVideo = useRef(null);
@@ -44,9 +45,76 @@ function Chat({ socket, username, room }) {
     socket.emit("stoppedTyping", { room });
   };
 
+  const handleCallUser = async (userToCallId) => {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
+
+    setMyCurrentStream(stream);
+    setShowMyVideo(true);
+
+    const peer = new Peer({
+      initiator: true,
+      trickle: false,
+      stream,
+    });
+
+    peer.on("signal", (data) => {
+      socket.emit("callUser", {
+        userToCall: userToCallId,
+        signalData: data,
+        from: socket.id,
+        name: username,
+      });
+    });
+
+    peer.on("stream", (remoteStream) => {
+      setUserCurrentStream(remoteStream);
+    });
+
+    socket.on("callAccepted", (signal) => {
+      setCallAccepted(true);
+      peer.signal(signal);
+    });
+
+    connectionRef.current = peer;
+  };
+
+  const answerCall = async () => {
+    const currentStream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
+
+    setMyCurrentStream(currentStream);
+    setShowMyVideo(true);
+    setCallAccepted(true);
+
+    const peer = new Peer({
+      initiator: false,
+      trickle: false,
+      stream: currentStream,
+    });
+
+    peer.on("signal", (data) => {
+      socket.emit("answerCall", { signal: data, to: callerId });
+    });
+
+    peer.on("stream", (stream) => {
+      setUserCurrentStream(stream);
+    });
+
+    peer.signal(callerSignal);
+    connectionRef.current = peer;
+    setReceivingCall(false);
+  };
+
   const leaveCall = () => {
-    setCallAnswered(false);
-    setUserToCallId(null);
+    setCallAccepted(false);
+    setMyCurrentStream(null);
+    setUserCurrentStream(null);
+    setShowMyVideo(false);
     connectionRef.current.destroy();
   };
 
@@ -65,88 +133,30 @@ function Chat({ socket, username, room }) {
       setcallerName(data.name);
       setCallerSignal(data.signal);
     });
+
+    return () => {
+      socket.off("receive_message");
+      socket.off("onlineUsers");
+      socket.off("callUser");
+
+      if (connectionRef.current) {
+        connectionRef.current.destroy();
+      }
+    };
   }, [socket]);
 
   useEffect(() => {
-    const handleCallUser = async () => {
-      const currentStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-
-      if (myVideo.current) {
-        myVideo.current.srcObject = currentStream;
-      }
-
-      const peer = new Peer({
-        initiator: true,
-        trickle: false,
-        stream: currentStream,
-      });
-
-      peer.on("signal", (data) => {
-        socket.emit("callUser", {
-          userToCall: userToCallId,
-          signalData: data,
-          from: socket.id,
-          name: username,
-        });
-      });
-
-      peer.on("stream", (stream) => {
-        if (userVideo.current) {
-          userVideo.current.srcObject = stream;
-        }
-      });
-
-      socket.on("callAccepted", (signal) => {
-        setCallAccepted(true);
-        peer.signal(signal);
-      });
-
-      connectionRef.current = peer;
-    };
-
-    if (userToCallId) {
-      handleCallUser();
+    if (myVideo.current && myCurrentStream) {
+      myVideo.current.srcObject = myCurrentStream;
     }
-  }, [socket, userToCallId, username]);
+  }, [myCurrentStream]);
 
   useEffect(() => {
-    const answerCall = async () => {
-      const currentStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-
-      if (myVideo.current) {
-        myVideo.current.srcObject = currentStream;
-      }
-
-      const peer = new Peer({
-        initiator: false,
-        trickle: false,
-        stream: currentStream,
-      });
-
-      peer.on("signal", (data) => {
-        socket.emit("answerCall", { signal: data, to: callerId });
-      });
-
-      peer.on("stream", (stream) => {
-        if (userVideo.current) {
-          userVideo.current.srcObject = stream;
-        }
-      });
-
-      peer.signal(callerSignal);
-      connectionRef.current = peer;
-    };
-
-    if (callAnswered) {
-      answerCall();
+    if (userVideo.current && userCurrentStream) {
+      userVideo.current.srcObject = userCurrentStream;
     }
-  }, [callAccepted, callAnswered, callerId, callerSignal, socket]);
+  }, [userCurrentStream]);
+  console.log({ callAccepted });
 
   return (
     <div className="chat-window">
@@ -167,7 +177,7 @@ function Chat({ socket, username, room }) {
                   {user.id !== socket.id && (
                     <button
                       className="phone-call-button"
-                      onClick={() => setUserToCallId(user.id)}
+                      onClick={() => handleCallUser(user.id)}
                       title={`Call ${user.username}`}
                     >
                       📞
@@ -179,12 +189,12 @@ function Chat({ socket, username, room }) {
           </>
         )}
       </div>
-      {/* {(userToCallId || callAnswered) && (
+      {callAccepted && (
         <button className="button" onClick={() => leaveCall()}>
           Leave Call
         </button>
-      )} */}
-      {(userToCallId || callAnswered) && (
+      )}
+      {showMyVideo && (
         <video
           playsInline
           muted
@@ -193,7 +203,7 @@ function Chat({ socket, username, room }) {
           style={{ width: "300px" }}
         />
       )}
-      {userToCallId || callAnswered ? (
+      {callAccepted ? (
         <video
           playsInline
           muted
@@ -206,7 +216,7 @@ function Chat({ socket, username, room }) {
           {receivingCall && !callAccepted ? (
             <div className="caller">
               <h1>{callerName} is calling...</h1>
-              <button onClick={() => setCallAnswered(true)}>Answer</button>
+              <button onClick={() => answerCall()}>Answer</button>
             </div>
           ) : null}
 
