@@ -17,7 +17,7 @@ function Chat({ socket, username, room }) {
 
   const myVideo = useRef(null);
   const userVideo = useRef(null);
-  const connectionRef = useRef();
+  const connectionRef = useRef(null);
 
   const sendMessage = async () => {
     if (currentMessage !== "") {
@@ -70,7 +70,13 @@ function Chat({ socket, username, room }) {
     });
 
     peer.on("stream", (remoteStream) => {
+      console.log({ remoteStream });
+
       setUserCurrentStream(remoteStream);
+    });
+
+    peer.on("error", (e) => {
+      console.log({ e });
     });
 
     socket.on("callAccepted", (signal) => {
@@ -101,7 +107,13 @@ function Chat({ socket, username, room }) {
       socket.emit("answerCall", { signal: data, to: callerId });
     });
 
+    peer.on("error", (e) => {
+      console.log({ e });
+    });
+
     peer.on("stream", (stream) => {
+      console.log({ stream });
+
       setUserCurrentStream(stream);
     });
 
@@ -111,11 +123,14 @@ function Chat({ socket, username, room }) {
   };
 
   const leaveCall = () => {
+    myVideo.current.srcObject?.getTracks().forEach((track) => track.stop());
+    userVideo.current.srcObject?.getTracks().forEach((track) => track.stop());
     setCallAccepted(false);
     setMyCurrentStream(null);
     setUserCurrentStream(null);
     setShowMyVideo(false);
     connectionRef.current.destroy();
+    connectionRef.current = null;
   };
 
   useEffect(() => {
@@ -138,10 +153,9 @@ function Chat({ socket, username, room }) {
       socket.off("receive_message");
       socket.off("onlineUsers");
       socket.off("callUser");
+      socket.off("callAccepted");
 
-      if (connectionRef.current) {
-        connectionRef.current.destroy();
-      }
+      connectionRef.current.destroy();
     };
   }, [socket]);
 
@@ -156,7 +170,6 @@ function Chat({ socket, username, room }) {
       userVideo.current.srcObject = userCurrentStream;
     }
   }, [userCurrentStream]);
-  console.log({ callAccepted });
 
   return (
     <div className="chat-window">
