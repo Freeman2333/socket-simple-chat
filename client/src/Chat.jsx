@@ -155,7 +155,9 @@ function Chat({ socket, username, room }) {
       socket.off("callUser");
       socket.off("callAccepted");
 
-      connectionRef.current.destroy();
+      if (connectionRef.current) {
+        connectionRef.current.destroy();
+      }
     };
   }, [socket]);
 
